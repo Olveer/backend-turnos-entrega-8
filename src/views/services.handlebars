@@ -1,0 +1,44 @@
+<h1>Servicios</h1>
+
+<form id="service-form">
+    <input name="name" placeholder="Nombre" required>
+    <input name="description" placeholder="Descripción" required>
+    <input name="duration" type="number" min="1" placeholder="Duración (min)" required>
+    <input name="price" type="number" min="1" placeholder="Precio" required>
+    <input name="category" placeholder="Categoría" required>
+    <label><input name="available" type="checkbox" checked> Disponible</label>
+    <button type="submit">Crear servicio</button>
+</form>
+<p id="form-error" class="error"></p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Duración</th>
+            <th>Precio</th>
+            <th>Categoría</th>
+            <th>Disponibilidad</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody id="services-body">
+        {{#each services}}
+        <tr id="service-{{id}}" data-id="{{id}}" data-available="{{available}}">
+            <td>{{name}}</td>
+            <td>{{description}}</td>
+            <td>{{duration}} min</td>
+            <td>${{price}}</td>
+            <td>{{category}}</td>
+            <td>{{#if available}}Disponible{{else}}No disponible{{/if}}</td>
+            <td>
+                <button class="btn-toggle">Cambiar disponibilidad</button>
+                <button class="btn-delete">Eliminar</button>
+            </td>
+        </tr>
+        {{else}}
+        <tr id="empty-row"><td colspan="7">No hay servicios cargados</td></tr>
+        {{/each}}
+    </tbody>
+</table>

@@ -1,0 +1,12 @@
+<h1>Servicios disponibles</h1>
+<p>Esta lista se actualiza sola cuando cambia la disponibilidad de un servicio.</p>
+
+<ul id="availability-list">
+    {{#each services}}
+    <li id="available-{{id}}">
+        <strong>{{name}}</strong> · {{category}} · {{duration}} min · ${{price}}
+    </li>
+    {{else}}
+    <li id="empty-item">No hay servicios disponibles</li>
+    {{/each}}
+</ul>
