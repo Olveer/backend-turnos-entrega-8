@@ -7,9 +7,8 @@ const emitEvent = (req, event, payload) => {
 };
 
 export const getServices = async (req, res) => {
-    const { category, available } = req.query;
-    const services = await servicesService.getServices({ category, available });
-    res.status(200).json(services);
+    const result = await servicesService.getServices(res.locals.query ?? {});
+    res.status(200).json(result);
 };
 
 export const getServiceById = async (req, res) => {
@@ -37,3 +36,4 @@ export const deleteService = async (req, res) => {
     emitEvent(req, "service:deleted", { id: sid });
     res.status(200).json({ message: "Servicio eliminado", service: deleted });
 };
+

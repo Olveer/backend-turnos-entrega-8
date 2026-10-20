@@ -4,7 +4,9 @@ import servicesService from "../services/services.service.js";
 const toPlain = (data) => JSON.parse(JSON.stringify(data));
 
 export const renderServices = async (req, res) => {
-    const services = await servicesService.getServices();
+   
+   
+const services = await servicesService.getAllServices();
     res.render("services", {
         title: "Servicios",
         view: "services",
@@ -13,10 +15,14 @@ export const renderServices = async (req, res) => {
 };
 
 export const renderAvailability = async (req, res) => {
-    const services = await servicesService.getServices({ available: "true" });
+
+const services = await servicesService.getAllServices({ available: true });
     res.render("availability", {
         title: "Disponibilidad",
         view: "availability",
         services: toPlain(services),
     });
 };
+
+
+

@@ -1,66 +1,50 @@
 import servicesRepository from "../repositories/services.repository.js";
+import { notFoundError } from "../utils/errors.js";
 
-const FIELDS = ["name", "description", "duration", "price", "category", "available"];
-
-const isNonEmptyString = (v) => typeof v === "string" && v.trim() !== "";
-const isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
-
-const validationError = (errors) => {
-    const error = new Error("Datos inválidos");
-    error.name = "ValidationError";
-    error.errors = errors;
-    return error;
+const buildFilter = ({ category, available } = {}) => {
+    const filter = {};
+    if (category !== undefined) filter.category = category;
+    if (available !== undefined) filter.available = available;
+    return filter;
 };
-
-const notFoundError = (message) => {
-    const error = new Error(message);
-    error.name = "NotFoundError";
-    return error;
-};
-
-// partial = true → en PUT solo se valida lo que venga en el body
-const validateService = (data, partial = false) => {
-    const rules = {
-        name: [isNonEmptyString, "name debe ser un texto no vacío"],
-        description: [isNonEmptyString, "description debe ser un texto no vacío"],
-        duration: [isPositiveNumber, "duration debe ser un número mayor a 0"],
-        price: [isPositiveNumber, "price debe ser un número mayor a 0"],
-        category: [isNonEmptyString, "category debe ser un texto no vacío"],
-        available: [(v) => typeof v === "boolean", "available debe ser true o false"],
-    };
-
-    const errors = [];
-    for (const [field, [check, message]] of Object.entries(rules)) {
-        const value = data[field];
-        if (value === undefined) {
-            if (!partial) errors.push(`Falta el campo ${field}`);
-        } else if (!check(value)) {
-            errors.push(message);
-        }
-    }
-    return errors;
-};
-
-// Solo deja pasar los campos permitidos (así el id del body se ignora)
-const pickFields = (data) =>
-    Object.fromEntries(
-        FIELDS.filter((field) => data[field] !== undefined).map((field) => [field, data[field]])
-    );
 
 class ServicesService {
-    async getServices({ category, available } = {}) {
-        let services = await servicesRepository.getAll();
+    async getServices({
+        category,
+        available,
+        page = 1,
+        limit = 10,
+        sortBy = "createdAt",
+        order = "asc",
+    } = {}) {
+        const filter = buildFilter({ category, available });
+        const sort = { [sortBy]: order === "desc" ? -1 : 1, _id: 1 }; // _id: orden estable
+        const skip = (page - 1) * limit;
 
-        if (category !== undefined) {
-            services = services.filter(
-                (s) => s.category.toLowerCase() === category.toLowerCase()
-            );
-        }
-        if (available !== undefined) {
-            const isAvailable = available === "true";
-            services = services.filter((s) => s.available === isAvailable);
-        }
-        return services;
+        const { docs, total } = await servicesRepository.findPaginated(filter, {
+            sort,
+            skip,
+            limit,
+        });
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            status: "success",
+            payload: docs,
+            total,
+            page,
+            limit,
+            totalPages,
+            hasPrevPage: page > 1,
+            hasNextPage: page < totalPages,
+            prevPage: page > 1 ? page - 1 : null,
+            nextPage: page < totalPages ? page + 1 : null,
+        };
+    }
+
+    // Sin paginar: lo usan las vistas Handlebars
+    async getAllServices(query) {
+        return await servicesRepository.getAll(buildFilter(query));
     }
 
     async getServiceById(id) {
@@ -70,17 +54,11 @@ class ServicesService {
     }
 
     async createService(data) {
-        const errors = validateService(data);
-        if (errors.length > 0) throw validationError(errors);
-
-        return await servicesRepository.create(pickFields(data));
+        return await servicesRepository.create(data);
     }
 
     async updateService(id, data) {
-        const errors = validateService(data, true);
-        if (errors.length > 0) throw validationError(errors);
-
-        const updated = await servicesRepository.update(id, pickFields(data));
+        const updated = await servicesRepository.update(id, data);
         if (!updated) throw notFoundError("Servicio no encontrado");
         return updated;
     }

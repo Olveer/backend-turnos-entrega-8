@@ -9,8 +9,16 @@ class BookingsRepository {
         return bookingsDAO.getById(id);
     }
 
+    getByIdPopulated(id) {
+        return bookingsDAO.getByIdPopulated(id);
+    }
+
     update(id, data) {
         return bookingsDAO.update(id, data);
+    }
+
+    addService(bookingId, serviceId, quantity) {
+        return bookingsDAO.addService(bookingId, serviceId, quantity);
     }
 }
 

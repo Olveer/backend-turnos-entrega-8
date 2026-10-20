@@ -1,8 +1,12 @@
 import servicesDAO from "../dao/services.dao.js";
 
 class ServicesRepository {
-    getAll() {
-        return servicesDAO.getAll();
+    getAll(filter) {
+        return servicesDAO.getAll(filter);
+    }
+
+    findPaginated(filter, options) {
+        return servicesDAO.findPaginated(filter, options);
     }
 
     getById(id) {

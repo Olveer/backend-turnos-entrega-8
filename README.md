@@ -9,11 +9,10 @@ API REST con Node.js, Express y MongoDB (Mongoose) para gestionar servicios y re
 2. Copiar `.env.example` a `.env` y completar `MONGO_URI` con la cadena de conexión de MongoDB Atlas
 3. `npm run dev` (o `npm start`)
 ## Endpoints
-
 ### Services
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | /api/services | Lista servicios (filtros: `?category=`, `?available=`) |
+| GET | /api/services | Lista servicios con filtros (`?category=`, `?available=`), paginación y orden (`page`, `limit`, `sortBy`, `order`) |
 | GET | /api/services/:sid | Servicio por id |
 | POST | /api/services | Crea un servicio |
 | PUT | /api/services/:sid | Actualiza un servicio |
@@ -35,7 +34,7 @@ Body de ejemplo:
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | POST | /api/bookings | Crea una reserva (sin servicios) |
-| GET | /api/bookings/:bid | Reserva por id |
+| GET | /api/bookings/:bid | Reserva por id, con servicios completos (populate) |
 | POST | /api/bookings/:bid/services/:sid | Agrega un servicio a la reserva (si ya estaba, suma `quantity`) |
 
 Body de ejemplo:
@@ -79,10 +78,14 @@ src/
     service.model.js
     booking.model.js
     message.model.js
+  middlewares/
+    validator.middleware.js
   routes/
     services.router.js
     bookings.router.js
     views.router.js
+  utils/
+    errors.js
   views/
     layouts/main.handlebars
     services.handlebars
@@ -112,8 +115,82 @@ router → controller → service → repository → DAO → MongoDB (Mongoose)
 |------|-----------------|
 | Router | Define los endpoints y los conecta con su controller |
 | Controller | Lee `req`, llama al service y responde con `res` |
-| Service | Reglas de negocio y validaciones. No conoce `req` ni `res` |
+| Service | Reglas de negocio. No conoce req ni res |
+| Middleware | Valida body y query con Zod antes del controller |
 | Repository | Ofrece métodos de acceso a datos, sin reglas de negocio |
 | DAO | Accede a MongoDB mediante los modelos de Mongoose, sin lógica de negocio |
 
 La migración de archivos JSON a MongoDB afectó solo a la capa de persistencia (DAO y modelos), sin cambiar rutas ni controllers.
+## Consultas avanzadas: GET /api/services
+| Query param | Descripción | Default |
+|-------------|-------------|---------|
+| `category`  | Filtra por categoría (sin distinguir mayúsculas) | - |
+| `available` | `true` o `false` | - |
+| `page`      | Número de página (≥ 1) | 1 |
+| `limit`     | Resultados por página (1 a 100) | 10 |
+| `sortBy`    | `name`, `price`, `duration`, `category` o `createdAt` | `createdAt` |
+| `order`     | `asc` o `desc` | `asc` |
+
+Ejemplos:
+```
+GET /api/services?category=salud&available=true
+GET /api/services?page=2&limit=5
+GET /api/services?sortBy=price&order=desc
+GET /api/services?category=salud&available=true&sortBy=price&order=asc&page=1&limit=5
+```
+
+Respuesta:
+```json
+{
+  "status": "success",
+  "payload": [ { "id": "...", "name": "Consulta general", "price": 25000 } ],
+  "total": 12,
+  "page": 1,
+  "limit": 5,
+  "totalPages": 3,
+  "hasPrevPage": false,
+  "hasNextPage": true,
+  "prevPage": null,
+  "nextPage": 2
+}
+```
+
+## Validaciones (Zod)
+
+Se aplican como middlewares (`src/middlewares/validator.middleware.js`) antes del controller, así que los datos inválidos nunca llegan a MongoDB. Devuelven `400`:
+```json
+{
+  "error": "Datos inválidos",
+  "errors": ["price debe ser mayor a 0"],
+  "details": [{ "field": "price", "message": "price debe ser mayor a 0" }]
+}
+```
+
+| Endpoint | Esquema | Reglas principales |
+|----------|---------|--------------------|
+| `POST /api/services` | `createServiceSchema` | name, description, duration, price, category, available obligatorios; duration y price > 0 |
+| `PUT /api/services/:sid` | `updateServiceSchema` | mismos campos, todos opcionales |
+| `GET /api/services` | `getServicesQuerySchema` | page ≥ 1, limit 1 a 100, sortBy y order en lista cerrada |
+| `POST /api/bookings` | `createBookingSchema` | clientName, clientEmail válido, date `YYYY-MM-DD`, time `HH:MM`, status opcional |
+| `POST /api/bookings/:bid/services/:sid` | `addServiceToBookingSchema` | quantity entero > 0 (default 1) |
+
+## Reservas con populate
+
+En la base, `services` guarda solo referencias: `[{ service: ObjectId, quantity: Number }]`.
+`GET /api/bookings/:bid` usa `populate("services.service")` y devuelve cada servicio completo:
+```json
+{
+  "id": "...",
+  "clientName": "Ana Pérez",
+  "clientEmail": "ana@mail.com",
+  "date": "2026-11-05",
+  "time": "10:30",
+  "status": "pending",
+  "services": [
+    {
+      "service": { "id": "...", "name": "Consulta general", "duration": 30, "price": 25000, "category": "salud", "available": true },
+      "quantity": 2
+    }
+  ]
+}
+```

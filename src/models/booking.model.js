@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 const bookingSchema = new mongoose.Schema(
     {
         clientName: { type: String, required: true, trim: true },
@@ -28,12 +27,13 @@ const bookingSchema = new mongoose.Schema(
         versionKey: false,
         toJSON: {
             transform: (doc, ret) => {
-                ret.id = ret._id.toString();
-                delete ret._id;
+                if (ret._id) {
+                    ret.id = ret._id.toString();
+                    delete ret._id;
+                }
                 return ret;
             },
         },
     }
 );
-
 export default mongoose.model("Booking", bookingSchema);

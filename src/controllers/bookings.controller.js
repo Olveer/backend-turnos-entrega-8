@@ -13,6 +13,7 @@ export const getBookingById = async (req, res) => {
 
 export const addServiceToBooking = async (req, res) => {
     const { bid, sid } = req.params;
-    const updatedBooking = await bookingsService.addServiceToBooking(bid, sid);
+    const { quantity } = req.body;
+    const updatedBooking = await bookingsService.addServiceToBooking(bid, sid, quantity);
     res.status(200).json(updatedBooking);
 };

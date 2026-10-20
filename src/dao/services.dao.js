@@ -1,11 +1,21 @@
 import ServiceModel from "../models/service.model.js";
 
-// Un id con formato inválido se trata como "no encontrado" (evita errores de cast)
 const isValidId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
 
+
+const COLLATION = { locale: "es", strength: 2 };
+
 class ServicesDAO {
-    async getAll() {
-        return await ServiceModel.find();
+    async getAll(filter = {}) {
+        return await ServiceModel.find(filter).collation(COLLATION);
+    }
+
+    async findPaginated(filter, { sort, skip, limit }) {
+        const [docs, total] = await Promise.all([
+            ServiceModel.find(filter).collation(COLLATION).sort(sort).skip(skip).limit(limit),
+            ServiceModel.countDocuments(filter).collation(COLLATION),
+        ]);
+        return { docs, total };
     }
 
     async getById(id) {
